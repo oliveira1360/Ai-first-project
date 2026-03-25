@@ -43,9 +43,6 @@ moves(State, PossibleMoveList) :-
     findall(Board, auxMoves(State, Board), PossibleMoveList).
 
 
-
-
-
 min_to_move(['x' | Tail]). :- %fez do nos a jogar
 
 max_to_move(['o' | Tail]) % vez do min jogar
