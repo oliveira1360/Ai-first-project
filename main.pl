@@ -11,32 +11,38 @@ play(RoundNumber, Board) :-
     ( isBlocked(Player, Board) ->  
         ( nl, printTable(Board), format('~nPlayer ~w perdeu :(', [Player]), ! )
     ;
-        (
+        ( Player == x ->
             nl, printTable(Board),
             format('~nRound ~w: Player ~w, enter move (Row/Col): ', [RoundNumber, Player]),
             read(X/Y),
-            ( ( isValidPlay(X, Y, Player, Board, OldRow, OldCol)) -> 
+            ( isValidPlay(X, Y, Player, Board, OldRow, OldCol) -> 
                 (
                     replaceTable(OldRow, OldCol, Board, '.', TempBoard), 
                     replaceTable(X, Y, TempBoard, Player, UpdateTempBoard),
-                    
                     nl, printTable(UpdateTempBoard),
                     setupSharp(UpdateTempBoard, NewBoard),
                     
                     ( isBlocked(Player, NewBoard) ->
                         ( nl, printTable(NewBoard), format('~nPlayer "~w" prendeu-se a si proprio', [Player]), ! )
                     ;
-                        ( 
-                            NextRound is RoundNumber + 1,
-                            play(NextRound, NewBoard)
-                        )
+                        ( NextRound is RoundNumber + 1, play(NextRound, NewBoard) )
                     )
                 )
             ; 
-                (
-                    write('Jogada invalida! Tente novamente.'), nl,
-                    play(RoundNumber, Board)
-                )
+                ( write('Jogada invalida! Tente novamente.'), nl, play(RoundNumber, Board) )
             )
+            
+        % MINIMAX ('o')
+        ; 
+            nl, printTable(Board),
+            format('~nRound ~w: O Computador (~w) esta a pensar...', [RoundNumber, Player]),
+            
+            % CHAMADA AO MINIMAX AQUI:
+            % Passas o Estado Atual, e ele devolve o Melhor Estado Seguinte
+            minimax([Player, Board], [_NextPlayer, BestBoard], _Val),
+            
+            NextRound is RoundNumber + 1,
+            % Continua o jogo com o tabuleiro escolhido pelo Minimax
+            play(NextRound, BestBoard) 
         )
     ).
