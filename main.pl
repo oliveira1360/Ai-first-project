@@ -1,9 +1,12 @@
 :-consult('print.pl').
 :-consult('replace.pl').
 :-consult('utils.pl').
-:-consult('minimax.pl').
+% :-consult('minimax.pl').
+:-consult('alpha_beta.pl').
+
 
 % play(0,[[x,.,.],[.,.,.],[.,.,o]]).
+% play(0,[[x,.,.,.,.,.],[.,.,.,.,.,.],[.,.,.,.,.,.],[.,.,.,.,.,.],[.,.,.,.,.,.],[.,.,.,.,.,o]]).
 play(RoundNumber, Board) :-
     Xpto is RoundNumber mod 2,
     (Xpto =:= 0 -> Player = x ; Player = o),
@@ -33,16 +36,20 @@ play(RoundNumber, Board) :-
             )
             
         % MINIMAX ('o')
+        %; 
+            %nl, printTable(Board),
+           % format('~nRound ~w: O Computador (~w) esta a pensar...', [RoundNumber, Player]),
+          %  minimax([Player, Board], [_NextPlayer, BestBoard], _Val),
+         %   NextRound is RoundNumber + 1,
+        %    play(NextRound, BestBoard) 
+        %)
+        % ALPHA-BETA ('o')
         ; 
             nl, printTable(Board),
-            format('~nRound ~w: O Computador (~w) esta a pensar...', [RoundNumber, Player]),
-            
-            % CHAMADA AO MINIMAX AQUI:
-            % Passas o Estado Atual, e ele devolve o Melhor Estado Seguinte
-            minimax([Player, Board], [_NextPlayer, BestBoard], _Val),
-            
+            format('~nRound ~w: O Computador (~w) esta a pensar (Alpha-Beta)...', [RoundNumber, Player]),
+            % Chamada inicial: Alpha = -10000, Beta = 10000, Profundidade Inicial = 0, Profundidade Máxima = 3
+            alphabeta([Player, Board], -10000, 10000, [_NextPlayer, BestBoard], _Val, 0, 2),
             NextRound is RoundNumber + 1,
-            % Continua o jogo com o tabuleiro escolhido pelo Minimax
             play(NextRound, BestBoard) 
         )
     ).
