@@ -94,7 +94,8 @@ play(RoundNumber, Board) :-
             %   Profundidade atual = 0, Profundidade máxima = 2
             %   (profundidade 4 causa stack overflow em 6x6 devido ao elevado fator de ramificação)
             % O BestBoard já inclui o movimento E a remoção de uma casa (feita em auxMoves)
-            alphabeta([Player, Board], -10000, 10000, [_NextPlayer, BestBoard], _Val, 0, 2),
+           % Conta casas vivas para ajustar a profundidade
+                alphabeta([Player, Board], -10000, 10000, [_NextPlayer, BestBoard], _Val, 0, 4),
             nl, printTable(BestBoard),
 
             % Verifica se o computador se bloqueou a si próprio com a sua jogada

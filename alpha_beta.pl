@@ -132,54 +132,79 @@ betterof( _, _, Pos1, Val1, Pos1, Val1). % Otherwise Pos1 better
 % -----------------------------------------------------------------------------
 % auxMoves(+[Player, Board], -FinalBoard)
 %
-% Gera um estado sucessor para o jogador Player a partir do Board.
-% Para cada combinação válida de (movimento + remoção de casa), produz um FinalBoard.
-% Usada com findall em moves/2 para gerar todos os sucessores possíveis.
-%
-% Passos:
-%   1. Localiza o peão do jogador no tabuleiro.
-%   2. Testa cada uma das 8 direções possíveis (DX, DY ∈ {-1,0,1}, exceto (0,0)).
-%   3. Verifica se o movimento é válido com isValidPlay.
-%   4. Executa o movimento (apaga posição antiga, coloca na nova).
-%   5. Via backtracking, escolhe cada casa vazia disponível e remove-a (marca com '#').
+% Gera sucessores com poda AGRESSIVA:
+%   - Movimento: todas as 8 direções válidas do peão próprio
+%   - Remoção: APENAS casas que são movimentos válidos do adversário
+%     (garantia de impacto) E limitada às 4 melhores por estado
 % -----------------------------------------------------------------------------
 auxMoves([Player, Board], FinalBoard) :-
-    indexOf(Board, Player, PosX, PosY), % Posição atual do peão
+    (Player == x -> Opponent = o ; Opponent = x),
+
+    indexOf(Board, Player, PosX, PosY),
     member(DX, [-1, 0, 1]),
     member(DY, [-1, 0, 1]),
-    (DX \= 0 ; DY \= 0),               % Exclui o movimento nulo (ficar no lugar)
+    (DX \= 0 ; DY \= 0),
     NX is PosX + DX,
     NY is PosY + DY,
-
-    % Verifica se o movimento para (NX, NY) é legal
     isValidPlay(NX, NY, Player, Board, PosX, PosY),
 
-    % Executa o movimento: apaga peão da posição antiga e coloca na nova
     replaceTable(PosX, PosY, Board, '.', TempBoard1),
     replaceTable(NX, NY, TempBoard1, Player, TempBoard2),
 
-    % Remove uma casa vazia (via backtracking, gera todas as combinações possíveis)
-    indexOf(TempBoard2, '.', RemoveX, RemoveY),
+    % Gera TODAS as remoções candidatas (casas válidas à volta do adversário)
+    indexOf(TempBoard2, Opponent, OppX, OppY),
+    findall(RX-RY,
+        ( member(RDX, [-1, 0, 1]),
+          member(RDY, [-1, 0, 1]),
+          (RDX \= 0 ; RDY \= 0),
+          RX is OppX + RDX,
+          RY is OppY + RDY,
+          isValidPlay(RX, RY, Opponent, TempBoard2, OppX, OppY)
+        ),
+        Candidates),
+
+    % Escolhe UMA dessas candidatas (via backtracking)
+    member(RemoveX-RemoveY, Candidates),
     replaceTable(RemoveX, RemoveY, TempBoard2, '#', FinalBoard),
 
-    % Filtra jogadas suicidas: não gera estados onde o próprio jogador fica bloqueado
     \+ isBlocked(Player, FinalBoard).
 
 
-% -----------------------------------------------------------------------------
-% moves(+[Player, Board], -PossibleMoveList)
-%
-% Gera a lista de todos os estados sucessores válidos a partir de [Player, Board].
-% Falha se não existirem movimentos (lista vazia), indicando estado terminal.
-%
-% Usa findall para recolher todos os tabuleiros resultantes via auxMoves.
-% O próximo jogador alterna: 'x' → 'o', 'o' → 'x'.
-% -----------------------------------------------------------------------------
-moves([Player, Board], PossibleMoveList) :-
-    (Player == x -> NextPlayer = o ; NextPlayer = x), % Determina o próximo jogador
-    findall([NextPlayer, NewBoard], auxMoves([Player, Board], NewBoard), PossibleMoveList),
-    PossibleMoveList \= []. % Falha se não houver movimentos disponíveis
 
+% getPos(+Board, +Row, +Col, ?Value) — lê o conteúdo da célula (Row, Col)
+getPos(Board, Row, Col, Value) :-
+    nth0(Row, Board, RowList),
+    nth0(Col, RowList, Value).
+
+
+% -----------------------------------------------------------------------------
+% moves/2 — versão otimizada com ordenação por score
+% -----------------------------------------------------------------------------
+moves([Player, Board], OrderedList) :-
+    (Player == x -> NextPlayer = o ; NextPlayer = x),
+
+    findall(Score-[NextPlayer, NewBoard],
+        ( auxMoves([Player, Board], NewBoard),
+          % Localiza ambos os peões no NOVO board (uma vez por sucessor)
+          indexOf(NewBoard, o, OX, OY),
+          indexOf(NewBoard, x, XX, XY),
+          staticval_fast(NewBoard, OX, OY, XX, XY, Score)
+        ),
+        ScoredList),
+
+    ScoredList \= [],
+
+    keysort(ScoredList, Ascending),
+    ( NextPlayer == x ->
+        reverse(Ascending, Sorted)
+    ;
+        Sorted = Ascending
+    ),
+    extract_positions(Sorted, OrderedList).
+
+extract_positions([], []).
+extract_positions([_-Pos | Rest], [Pos | RestPos]) :-
+    extract_positions(Rest, RestPos).
 
 % -----------------------------------------------------------------------------
 % min_to_move(+Pos) / max_to_move(+Pos)
@@ -239,3 +264,28 @@ mobilidade(Player, Board, Count) :-
         isValidPlay(NX, NY, Player, Board, PosX, PosY) % Conta apenas movimentos válidos
     ), ValidSpots),
     length(ValidSpots, Count). % O count é o número de movimentos válidos encontrados
+% -----------------------------------------------------------------------------
+% staticval com posições pré-calculadas — versão rápida para ordenação
+%
+% staticval_fast(+Board, +OPosX, +OPosY, +XPosX, +XPosY, -Val)
+%
+% Evita o custo de indexOf em cada chamada.
+% -----------------------------------------------------------------------------
+staticval_fast(Board, OX, OY, XX, XY, Val) :-
+    mobilidade_at(o, Board, OX, OY, MovO),
+    mobilidade_at(x, Board, XX, XY, MovX),
+    ( MovO =:= 0 -> Val = -1000
+    ; MovX =:= 0 -> Val =  1000
+    ; Val is MovO - MovX
+    ).
+
+
+mobilidade_at(Player, Board, PX, PY, Count) :-
+    aggregate_all(count, (
+        member(DX, [-1, 0, 1]),
+        member(DY, [-1, 0, 1]),
+        (DX \= 0 ; DY \= 0),
+        NX is PX + DX,
+        NY is PY + DY,
+        isValidPlay(NX, NY, Player, Board, PX, PY)
+    ), Count).
