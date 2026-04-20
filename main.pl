@@ -74,28 +74,27 @@ play(RoundNumber, Board) :-
                 ( write('Jogada invalida! Tente novamente.'), nl, play(RoundNumber, Board) )
             )
 
-        % MINIMAX ('o') - desativado, substituído pelo Alpha-Beta
-        %;
-            %nl, printTable(Board),
-           % format('~nRound ~w: O Computador (~w) esta a pensar...', [RoundNumber, Player]),
-          %  minimax([Player, Board], [_NextPlayer, BestBoard], _Val),
-         %   NextRound is RoundNumber + 1,
-        %    play(NextRound, BestBoard)
-        %)
+        % MINIMAX ('o') 
+        /*
+            nl, printTable(Board),
+            format('~nRound ~w: O Computador (~w) esta a pensar...', [RoundNumber, Player]),
+            minimax([Player, Board], [_NextPlayer, BestBoard], _Val),
+            NextRound is RoundNumber + 1,
+            play(NextRound, BestBoard)
+        ) */
 
         % --- TURNO DO COMPUTADOR ('o') via ALPHA-BETA ---
         ;
             nl, printTable(Board),
             format('~nRound ~w: O Computador (~w) esta a pensar (Alpha-Beta)...', [RoundNumber, Player]),
-
-            % Chamada ao Alpha-Beta:
-            %   Alpha inicial = -10000 (pior valor possível para o maximizador)
-            %   Beta  inicial = +10000 (pior valor possível para o minimizador)
-            %   Profundidade atual = 0, Profundidade máxima = 2
-            %   (profundidade 4 causa stack overflow em 6x6 devido ao elevado fator de ramificação)
-            % O BestBoard já inclui o movimento E a remoção de uma casa (feita em auxMoves)
-           % Conta casas vivas para ajustar a profundidade
-                alphabeta([Player, Board], -10000, 10000, [_NextPlayer, BestBoard], _Val, 0, 4),
+            alphabeta([Player, Board], -10000, 10000, [_NextPlayer, BestBoard], Val, 0, 3),
+            ( Val >= 1000 ->
+            format('~nVitoria garantida encontrada! (Val=~w)', [Val])
+            ; Val =< -1000 ->
+            format('~nDerrota inevitavel detetada :( (Val=~w)', [Val])
+            ;
+                format('~nMelhor avaliacao: ~w', [Val])
+            ),
             nl, printTable(BestBoard),
 
             % Verifica se o computador se bloqueou a si próprio com a sua jogada
@@ -106,3 +105,44 @@ play(RoundNumber, Board) :-
             )
         )
     ).
+
+
+
+
+
+
+% para humano vs humano
+/*
+( isBlocked(Player, Board) ->  
+        ( nl, printTable(Board), format('~nPlayer ~w perdeu :(', [Player]), ! )
+    ;
+        (
+            nl, printTable(Board),
+            format('~nRound ~w: Player ~w, enter move (Row/Col): ', [RoundNumber, Player]),
+           read(X/Y),
+            ( ( isValidPlay(X, Y, Player, Board, OldRow, OldCol)) -> 
+                (
+                    replaceTable(OldRow, OldCol, Board, '.', TempBoard), 
+                    replaceTable(X, Y, TempBoard, Player, UpdateTempBoard),
+                    
+                    nl, printTable(UpdateTempBoard),
+                    setupSharp(UpdateTempBoard, NewBoard),
+                    
+                    ( isBlocked(Player, NewBoard) ->
+                        ( nl, printTable(NewBoard), format('~nPlayer "~w" prendeu-se a si proprio', [Player]), ! )
+                    ;
+                        ( 
+                            NextRound is RoundNumber + 1,
+                            play(NextRound, NewBoard)
+                        )
+                    )
+                )
+            ; 
+                (
+                    write('Jogada invalida! Tente novamente.'), nl,
+                    play(RoundNumber, Board)
+                )
+            )
+        )
+    ).
+*/

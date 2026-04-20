@@ -82,6 +82,13 @@ boundedbest([Pos | PosList], Alpha, Beta, GoodPos, GoodVal, Depth, Max) :-
 %
 % Caso geral: atualiza os limites com newbounds e continua a explorar.
 % -----------------------------------------------------------------------------
+
+goodenough(_, _, _, Pos, Val, Pos, Val, _, _) :- 
+    Val >= 1000, !.
+goodenough(_, _, _, Pos, Val, Pos, Val, _, _) :- 
+    Val =< -1000, !.
+
+    
 goodenough([], _, _, Pos, Val, Pos, Val, _, _) :- !. % Lista vazia: candidato atual é o melhor
 
 goodenough(_, _Alpha, Beta, Pos, Val, Pos, Val, _, _) :-
@@ -164,7 +171,11 @@ auxMoves([Player, Board], FinalBoard) :-
         Candidates),
 
     % Escolhe UMA dessas candidatas (via backtracking)
-    member(RemoveX-RemoveY, Candidates),
+   ( Candidates = [] ->
+    indexOf(TempBoard2, '.', RemoveX, RemoveY)
+    ;
+        member(RemoveX-RemoveY, Candidates)
+    ),
     replaceTable(RemoveX, RemoveY, TempBoard2, '#', FinalBoard),
 
     \+ isBlocked(Player, FinalBoard).
@@ -231,8 +242,8 @@ max_to_move([o | _Tail]).
 %   O computador tenta maximizar as suas opções e minimizar as do adversário.
 %   Valores positivos favorecem o computador; negativos favorecem o humano.
 % -----------------------------------------------------------------------------
-staticval([o, Board], -1000) :- mobilidade(o, Board, 0), !. % 'o' não tem movimentos (Perdeu)
-staticval([x, Board], 1000)  :- mobilidade(x, Board, 0), !. % 'x' não tem movimentos (Ganhou)
+staticval([o, Board], -1000) :- /*write('chegou ao final humano'), */ mobilidade(o, Board, 0), !. % 'o' não tem movimentos (Perdeu)
+staticval([x, Board], 1000)  :- /*write('chegou ao final AI'),*/ mobilidade(x, Board, 0), !. % 'x' não tem movimentos (Ganhou)
 
 staticval([_, Board], Val) :-
     mobilidade(o, Board, MovMax),
